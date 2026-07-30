@@ -1,0 +1,49 @@
+# ============================================
+# 生产环境 docker-compose 覆盖配置
+# 使用方式: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# ============================================
+
+version: "3.8"
+
+services:
+  # PostgreSQL - 生产环境不暴露公网端口
+  postgres:
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin123}
+
+  # Redis - 生产环境不暴露公网端口
+  redis:
+    ports: !reset []
+
+  # InfluxDB - 生产环境不暴露公网端口
+  influxdb:
+    ports: !reset []
+    environment:
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD:-admin123456}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN:-my-super-secret-token}
+
+  # 后端 - 增加健康检查和资源限制
+  backend:
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin123}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-my-super-secret-token}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 前端 - 增加资源限制
+  frontend:
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
